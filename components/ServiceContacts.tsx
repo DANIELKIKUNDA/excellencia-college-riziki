@@ -24,6 +24,7 @@ export default function ServiceContacts() {
               <span className="serviceIcon" aria-hidden="true">{service.label.charAt(0)}</span>
               <div>
                 <h3>{service.label}</h3>
+                <strong className="servicePerson">{service.person}</strong>
                 <p>{phones.length ? phones.join(' · ') : 'Numéro à ajouter'}</p>
               </div>
             </div>
