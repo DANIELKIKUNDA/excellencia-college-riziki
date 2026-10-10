@@ -6,7 +6,7 @@ Référentiel contrôlé : branche `main`
 
 ## Résultat exécutif
 
-Le site public, son domaine, son export statique et sa PWA restent opérationnels. La finition mobile et le code du back-office dynamique sont livrés. La certification complète du back-office reste **FAIL** tant que `supabase/finalization.sql` n’a pas été exécuté et que les trois Edge Functions n’ont pas été déployées avec leurs secrets. Les quatre nouvelles tables renvoient actuellement HTTP 404 sur le projet Supabase public.
+Le site public, son domaine, son export statique et sa PWA restent opérationnels. La migration des tables dynamiques a été exécutée avec succès et les données initiales sont accessibles. La certification complète du back-office reste **FAIL** tant que le bucket média et les trois Edge Functions ne sont pas réellement disponibles avec leurs secrets.
 
 ## Contrôle par exigence
 
@@ -21,15 +21,15 @@ Le site public, son domaine, son export statique et sa PWA restent opérationnel
 | Messages parents | PASS | Lecture par RLS, statuts nouveau/en traitement/clôturé et affichage élève/classe. |
 | Actualités | PASS | Création, modification, publication/dépublication et suppression dans l’interface. |
 | Communiqués | PASS | Création, modification, publication/dépublication et suppression dans l’interface. |
-| Photos et vidéos | FAIL | Interface, stockage et affichage codés, mais table/bucket Supabase non créés en production. |
+| Photos et vidéos | FAIL | Table `media_items` disponible ; le bucket `school-media` renvoie encore `NoSuchBucket`. |
 | Notifications push | FAIL | Code présent ; fonctions Edge/VAPID non certifiés comme déployés en production. |
-| Rôles détaillés et RLS | FAIL | Migration SQL prête ; non appliquée au projet Supabase en ligne. |
+| Rôles détaillés et RLS | PASS | Migration appliquée ; tables publiques et politiques créées. Les tests par compte réel restent à effectuer après création des comptes. |
 | Gestion des comptes | FAIL | Interface et fonction Edge mises à jour ; fonction `manage-users` non certifiée déployée. |
-| Coordonnées dynamiques | FAIL | Lecture/édition avec repli sûr codées ; table `site_settings` absente en production. |
-| Responsables dynamiques | FAIL | Lecture/édition avec repli sûr codées ; table `school_services` absente en production. |
-| Réseaux sociaux dynamiques | FAIL | Lecture/édition codées ; table `social_links` absente en production. |
-| YouTube/TikTok | FAIL | Ajout et cartes publiques codés ; table `media_items` absente en production. |
-| Formulaire enrichi | FAIL | Code validé ; colonnes `student_name` et `student_class` restent à migrer en production. |
+| Coordonnées dynamiques | PASS | Table `site_settings` HTTP 200 et données initiales confirmées. |
+| Responsables dynamiques | PASS | Table `school_services` HTTP 200 ; sept responsables et numéros confirmés. |
+| Réseaux sociaux dynamiques | PASS | Table `social_links` HTTP 200 ; liens administrables sans recompilation. |
+| YouTube/TikTok | PASS | Table `media_items` HTTP 200 et gestion des liens prête ; les uploads photo attendent le bucket. |
+| Formulaire enrichi | PASS | Colonnes élève/classe disponibles après migration et code validé. |
 | UX mobile structurelle | PASS | Centrage des héros, images visibles, contrôles ≥44 px, champs à 16 px et protection contre le scroll horizontal. |
 | Audit visuel 320/360/390/412 | FAIL | Aucun navigateur automatisé avec simulation de viewport n’est disponible dans cet environnement. |
 | Audit tablette/desktop | FAIL | Compilation et CSS validés, mais pas de certification visuelle automatisée par viewport. |
@@ -59,14 +59,17 @@ Le site public, son domaine, son export statique et sa PWA restent opérationnel
 - `git diff --check` : aucune erreur d’espace ou de patch.
 - Contrôle des liens `tel:`, `wa.me`, formulaire ciblé et inscription du service worker : PASS par inspection du build/source.
 - Vérification REST Supabase en lecture seule :
-  - `site_settings` : HTTP 404;
-  - `school_services` : HTTP 404;
-  - `social_links` : HTTP 404;
-  - `media_items` : HTTP 404.
+  - `site_settings` : HTTP 200;
+  - `school_services` : HTTP 200;
+  - `social_links` : HTTP 200;
+  - `media_items` : HTTP 200;
+  - `contact_messages` : HTTP 200;
+  - bucket `school-media` : FAIL, `NoSuchBucket`;
+  - fonctions Edge `manage-users`, `subscribe-push`, `send-push` : HTTP 404.
 
 ## Actions indispensables pour lever les FAIL Supabase
 
-1. Exécuter intégralement `supabase/finalization.sql` dans Supabase SQL Editor.
+1. Créer ou recréer le bucket public `school-media`.
 2. Déployer `manage-users`, `subscribe-push` et `send-push`.
 3. Configurer les secrets VAPID et la clé service-role uniquement dans les secrets des Edge Functions.
 4. Créer le premier compte `admin_systeme` de manière sécurisée dans Supabase Auth, puis son profil actif.
