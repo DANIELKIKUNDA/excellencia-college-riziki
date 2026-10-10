@@ -1,0 +1,6 @@
+import Image from 'next/image';
+import MobileContactDock from '@/components/MobileContactDock';
+import SocialLinks from '@/components/SocialLinks';
+import { SCHOOL } from '@/lib/config';
+
+export default function SiteFooter(){return <><section className="officialStrip"><div className="shell officialStripInner"><div><small>SITE OFFICIEL</small><strong>excellenciariziki.com</strong></div><p>Une seule adresse pour découvrir l’école, suivre ses actualités et contacter ses services.</p><a href="#contenu">Retour en haut ↑</a></div></section><MobileContactDock/><footer className="footer"><div className="shell footerGrid"><div className="footerBrand"><Image src="/brand/logo-clean.png" alt="Logo Riziki" width={88} height={64}/><div><strong>EXCELLENCIA COLLÈGE RIZIKI</strong><p>Discipline · Travail · Excellence</p></div></div><div><strong>Adresse</strong><p>Avenue College Masombo n°23<br/>Quartier Hewa Bora, commune Kampempa</p></div><div><strong>Contact officiel</strong><p><a className="footerMail" href={`mailto:${SCHOOL.email}`}>{SCHOOL.email}</a><br/><a className="footerSite" href={SCHOOL.website}>excellenciariziki.com</a></p></div><div><strong>Réseaux officiels</strong><SocialLinks/></div></div><div className="copyright">© 2026 EXCELLENCIA COLLÈGE RIZIKI — Tous droits réservés.</div></footer></>}

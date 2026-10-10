@@ -2,8 +2,8 @@
 import { useState } from 'react';
 
 const links = [
-  ['L’école', '#ecole'], ['Formations', '#formations'], ['Riziki en action', '#action'],
-  ['Actualités', '#actualites'], ['Communiqués', '#communiques'], ['Contact', '#contact']
+  ['L’école', '/ecole/'], ['Formations', '/formations/'], ['Vie scolaire', '/vie-scolaire/'],
+  ['Actualités', '/actualites/'], ['Communiqués', '/communiques/'], ['Contact', '/contact/']
 ];
 
 export default function MobileNav(){
