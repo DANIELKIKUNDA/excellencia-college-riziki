@@ -5,9 +5,27 @@ create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   full_name text,
   service text,
-  role text not null default 'staff' check (role in ('staff','admin')),
+  role text not null default 'staff' check (role in ('staff','manager','system_admin')),
   created_at timestamptz not null default now()
 );
+
+-- Migration des anciens comptes : le titre administratif de l'école devient
+-- "gestionnaire" et reste distinct de l'administrateur technique du système.
+alter table public.profiles drop constraint if exists profiles_role_check;
+update public.profiles set role = 'manager' where role = 'admin';
+alter table public.profiles add constraint profiles_role_check
+  check (role in ('staff','manager','system_admin'));
+
+create or replace function public.current_user_role()
+returns text
+language sql
+stable
+security definer
+set search_path = public
+as $$ select role from public.profiles where id = auth.uid() $$;
+
+revoke all on function public.current_user_role() from public;
+grant execute on function public.current_user_role() to authenticated;
 
 create table if not exists public.contact_messages (
   id uuid primary key default gen_random_uuid(),
@@ -62,9 +80,23 @@ alter table public.news enable row level security;
 alter table public.announcements enable row level security;
 alter table public.push_subscriptions enable row level security;
 
--- Un membre du personnel ne peut lire que son propre profil.
+-- Chaque membre lit son profil ; l'administrateur système gère les comptes.
 drop policy if exists "staff reads own profile" on public.profiles;
-create policy "staff reads own profile" on public.profiles for select to authenticated using (id = auth.uid());
+create policy "staff reads own profile" on public.profiles for select to authenticated using (
+  id = auth.uid() or public.current_user_role() = 'system_admin'
+);
+drop policy if exists "system admin creates profiles" on public.profiles;
+create policy "system admin creates profiles" on public.profiles for insert to authenticated with check (
+  public.current_user_role() = 'system_admin'
+);
+drop policy if exists "system admin updates profiles" on public.profiles;
+create policy "system admin updates profiles" on public.profiles for update to authenticated using (
+  public.current_user_role() = 'system_admin'
+) with check (public.current_user_role() = 'system_admin');
+drop policy if exists "system admin deletes profiles" on public.profiles;
+create policy "system admin deletes profiles" on public.profiles for delete to authenticated using (
+  public.current_user_role() = 'system_admin' and id <> auth.uid()
+);
 
 -- Les visiteurs peuvent uniquement envoyer un message public.
 drop policy if exists "public can send messages" on public.contact_messages;
@@ -76,7 +108,7 @@ create policy "staff can read messages" on public.contact_messages for select to
   exists (
     select 1 from public.profiles p
     where p.id = auth.uid()
-      and (p.role = 'admin' or p.service = contact_messages.service)
+      and (p.role in ('manager','system_admin') or p.service = contact_messages.service)
   )
 );
 
@@ -85,13 +117,13 @@ create policy "staff can update messages" on public.contact_messages for update 
   exists (
     select 1 from public.profiles p
     where p.id = auth.uid()
-      and (p.role = 'admin' or p.service = contact_messages.service)
+      and (p.role in ('manager','system_admin') or p.service = contact_messages.service)
   )
 ) with check (
   exists (
     select 1 from public.profiles p
     where p.id = auth.uid()
-      and (p.role = 'admin' or p.service = contact_messages.service)
+      and (p.role in ('manager','system_admin') or p.service = contact_messages.service)
   )
 );
 
@@ -101,19 +133,19 @@ create policy "public reads published news" on public.news for select to anon us
 drop policy if exists "public reads published announcements" on public.announcements;
 create policy "public reads published announcements" on public.announcements for select to anon using (published = true);
 
--- Seuls les administrateurs publient les communications officielles.
+-- Les gestionnaires scolaires et l'administrateur système publient les communications.
 drop policy if exists "staff manages news" on public.news;
 create policy "staff manages news" on public.news for all to authenticated using (
-  exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin')
+  public.current_user_role() in ('manager','system_admin')
 ) with check (
-  exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin')
+  public.current_user_role() in ('manager','system_admin')
 );
 
 drop policy if exists "staff manages announcements" on public.announcements;
 create policy "staff manages announcements" on public.announcements for all to authenticated using (
-  exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin')
+  public.current_user_role() in ('manager','system_admin')
 ) with check (
-  exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin')
+  public.current_user_role() in ('manager','system_admin')
 );
 
 -- push_subscriptions n'est jamais lu directement par le navigateur.

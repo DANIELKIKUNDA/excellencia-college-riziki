@@ -35,6 +35,21 @@ const options = [
   ['CG', 'Commerciale de gestion'], ['HP', 'Pédagogie générale'], ['TCC', 'Technique coupe et couture'], ['SC', 'Sciences'],
 ];
 
+const activityPhotos = Array.from({ length: 31 }, (_, index) => {
+  const number = index + 1;
+  const workshop = number <= 15 || [18, 20, 26].includes(number)
+    ? 'Électricité générale'
+    : number >= 27
+      ? 'Mécanique automobile'
+      : 'Mécanique générale';
+  return {
+    src: `/images/activities/riziki-atelier-${String(number).padStart(2, '0')}.webp`,
+    alt: `Photo réelle des élèves de EXCELLENCIA COLLÈGE RIZIKI en atelier de ${workshop.toLowerCase()}`,
+    title: workshop,
+    tag: 'Formation pratique',
+  };
+});
+
 
 export default function Home() {
   return (
@@ -122,6 +137,8 @@ export default function Home() {
       <Reveal><section id="action" className="section shell">
         <div className="sectionHead proofHead"><div><p className="sectionKicker">LE CAMPUS EN IMAGES</p><h2>Des espaces réels, un cadre d’apprentissage visible</h2><p>Découvrez les locaux de l’établissement à travers des photographies réelles de Riziki, optimisées uniquement pour la lumière, la netteté et la présentation Web.</p></div></div>
         <PhotoGallery photos={realPhotos} />
+        <div className="sectionHead optionHead"><div><p className="sectionKicker">RIZIKI EN ACTION</p><h2>Nos élèves dans les ateliers techniques</h2><p>Électricité générale, mécanique générale et mécanique automobile : découvrez les élèves, les équipements et les activités pratiques à travers 31 nouvelles photographies authentiques.</p></div></div>
+        <PhotoGallery photos={activityPhotos} />
         <div className="maternelleFeature">
           <div className="maternellePhoto"><Image src="/images/final/image-1791619633233.webp" alt="Salle de maternelle de EXCELLENCIA COLLÈGE RIZIKI" fill className="cover" sizes="(max-width: 800px) 100vw, 50vw" /></div>
           <div><p className="sectionKicker">FOCUS MATERNELLE</p><h3>Un environnement pensé pour les premiers apprentissages</h3><p>La maternelle dispose d’un espace identifiable et équipé, adapté aux activités d’éveil, d’initiation et d’accompagnement des plus petits.</p><span className="factBadge">1ère · 2ème · 3ème maternelle</span></div>

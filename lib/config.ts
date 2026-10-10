@@ -4,6 +4,7 @@ export const SERVICES = [
   { id: 'direction', label: 'Direction / Administration', phone: '0961247956' },
   { id: 'directeur-etudes', label: 'Directeur des études', phone: '0853888405' },
   { id: 'discipline', label: 'Direction de discipline', phone: '0976869675' },
+  { id: 'coordonnateur', label: 'Coordonnateur', phone: '+393208455568', alternatePhones: ['0834760032'] },
   { id: 'primaire', label: 'Direction primaire', phone: null },
 ] as const;
 

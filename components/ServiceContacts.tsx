@@ -17,24 +17,25 @@ export default function ServiceContacts() {
     <div className="serviceContacts">
       {SERVICES.map((service) => {
         const phone = service.phone;
+        const phones = phone ? [phone, ...('alternatePhones' in service ? service.alternatePhones : [])] : [];
         return (
           <article className="serviceContactCard" key={service.id}>
             <div className="serviceContactHead">
               <span className="serviceIcon" aria-hidden="true">{service.label.charAt(0)}</span>
               <div>
                 <h3>{service.label}</h3>
-                <p>{phone ?? 'Numéro à ajouter'}</p>
+                <p>{phones.length ? phones.join(' · ') : 'Numéro à ajouter'}</p>
               </div>
             </div>
             <div className="serviceActions">
-              {phone ? <>
-                <a className="serviceAction call" href={`tel:${phone}`} aria-label={`Appeler ${service.label}`}>
-                  <span aria-hidden="true">☎</span> Appeler
+              {phones.length ? phones.map((contactPhone, index) => <div className="servicePhoneActions" key={contactPhone}>
+                <a className="serviceAction call" href={`tel:${contactPhone}`} aria-label={`Appeler ${service.label} au ${contactPhone}`}>
+                  <span aria-hidden="true">☎</span> Appeler{phones.length > 1 ? ` ${index + 1}` : ''}
                 </a>
-                <a className="serviceAction whatsapp" href={waHref(service.label, phone)} target="_blank" rel="noreferrer" aria-label={`Écrire à ${service.label} sur WhatsApp`}>
-                  <span aria-hidden="true">◉</span> WhatsApp
+                <a className="serviceAction whatsapp" href={waHref(service.label, contactPhone)} target="_blank" rel="noreferrer" aria-label={`Écrire à ${service.label} au ${contactPhone} sur WhatsApp`}>
+                  <span aria-hidden="true">◉</span> WhatsApp{phones.length > 1 ? ` ${index + 1}` : ''}
                 </a>
-              </> : <span className="servicePending">Contact bientôt disponible</span>}
+              </div>) : <span className="servicePending">Contact bientôt disponible</span>}
               <a className="serviceAction write" href={`#message?service=${service.id}`} onClick={() => {
                 const select = document.querySelector<HTMLSelectElement>('select[name="service"]');
                 if (select) {

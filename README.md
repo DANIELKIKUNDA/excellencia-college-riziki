@@ -23,11 +23,18 @@ GitHub Pages ne peut héberger que des fichiers statiques. La V9 exporte donc Ne
 2. Exécuter `supabase/schema.sql` dans SQL Editor.
 3. Créer les comptes du personnel dans Authentication > Users.
 4. Insérer leur profil dans `public.profiles` avec le même UUID.
-5. Déployer les fonctions : `subscribe-push` et `send-push`.
+5. Déployer les fonctions : `subscribe-push`, `send-push` et `manage-users`.
 6. Définir les secrets VAPID dans Supabase Edge Functions.
 
 ## Administration
 `/admin/` reste une page du site GitHub Pages, mais l'authentification et les droits sont gérés par Supabase Auth + RLS. Aucune clé `service_role` n'est exposée dans GitHub Pages.
+
+### Rôles
+- `staff` : voit et traite uniquement les messages de son service.
+- `manager` : gestionnaire scolaire ; traite tous les messages et publie les actualités et communiqués.
+- `system_admin` : administrateur technique ; possède les droits du gestionnaire et gère les comptes du personnel.
+
+Le directeur des études reçoit provisoirement le rôle `system_admin`. Le titulaire du titre « administrateur » de l'école reçoit le rôle `manager`.
 
 ## Médias
 Uniquement les vraies photos fournies par EXCELLENCIA COLLÈGE RIZIKI. Aucun visuel fictif ne doit être ajouté.
