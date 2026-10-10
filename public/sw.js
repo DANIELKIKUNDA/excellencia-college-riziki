@@ -1,0 +1,7 @@
+const CACHE='riziki-shell-v2';
+const CORE=['/','/manifest.webmanifest','/brand/logo-clean.png'];
+self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)).catch(()=>{}));self.skipWaiting()});
+self.addEventListener('activate',event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key!==CACHE).map(key=>caches.delete(key)))).then(()=>self.clients.claim()))});
+self.addEventListener('fetch',event=>{const url=new URL(event.request.url);if(event.request.method!=='GET'||url.origin!==self.location.origin||url.pathname.startsWith('/admin'))return;event.respondWith(fetch(event.request).then(r=>{if(r.ok){const copy=r.clone();caches.open(CACHE).then(c=>c.put(event.request,copy)).catch(()=>{})}return r}).catch(()=>caches.match(event.request).then(r=>r||(event.request.mode==='navigate'?caches.match('/'):undefined))))});
+self.addEventListener('push',event=>{let d={title:'EXCELLENCIA COLLÈGE RIZIKI',body:'Nouvelle information de l’école.',url:'/'};try{d={...d,...event.data.json()}}catch{};event.waitUntil(self.registration.showNotification(d.title,{body:d.body,icon:d.icon||'/brand/logo-clean.png',badge:d.badge||'/brand/logo-clean.png',data:{url:d.url||'/'},vibrate:[180,80,180]}))});
+self.addEventListener('notificationclick',event=>{event.notification.close();const url=event.notification.data?.url||'/';event.waitUntil(clients.matchAll({type:'window',includeUncontrolled:true}).then(list=>{for(const c of list){if('focus'in c){c.navigate(url);return c.focus()}}return clients.openWindow(url)}))});
