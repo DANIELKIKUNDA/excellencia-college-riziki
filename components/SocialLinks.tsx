@@ -1,15 +1,17 @@
-const socials = [
-  ['YouTube', process.env.NEXT_PUBLIC_YOUTUBE_URL],
-  ['Facebook', process.env.NEXT_PUBLIC_FACEBOOK_URL],
-  ['TikTok', process.env.NEXT_PUBLIC_TIKTOK_URL],
-] as const;
+'use client';
+
+import { useEffect, useState } from 'react';
+import { hasSupabase, supabase } from '@/lib/supabase-browser';
+
+type Social = { platform:string; url:string; active:boolean };
 
 export default function SocialLinks() {
-  const active = socials.filter(([, url]) => Boolean(url));
-  if (!active.length) return <p><small>Liens officiels à ajouter après création des comptes</small></p>;
+  const [active,setActive]=useState<Social[]>([]);
+  useEffect(()=>{if(!hasSupabase)return;supabase.from('social_links').select('platform,url,active').eq('active',true).then(({data})=>setActive((data||[]).filter(item=>Boolean(item.url)) as Social[]))},[]);
+  if (!active.length) return <p><small>Liens officiels bientôt disponibles</small></p>;
   return (
     <div className="socialLinks" aria-label="Réseaux sociaux officiels">
-      {active.map(([name, url]) => <a key={name} href={url!} target="_blank" rel="noreferrer">{name}</a>)}
+      {active.map(item => <a key={item.platform} href={item.url} target="_blank" rel="noreferrer">{item.platform.charAt(0).toUpperCase()+item.platform.slice(1)}</a>)}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { SERVICES } from '@/lib/config';
+import { useSchoolServices } from '@/lib/use-site-data';
 
 function whatsappNumber(phone: string) {
   const digits = phone.replace(/\D/g, '');
@@ -13,11 +13,12 @@ function waHref(service: string, phone: string) {
 }
 
 export default function ServiceContacts() {
+  const services = useSchoolServices();
   return (
     <div className="serviceContacts">
-      {SERVICES.map((service) => {
+      {services.map((service) => {
         const phone = service.phone;
-        const phones = phone ? [phone, ...('alternatePhones' in service ? service.alternatePhones : [])] : [];
+        const phones = phone ? [phone, ...(service.alternatePhones || [])] : [];
         return (
           <article className="serviceContactCard" key={service.id}>
             <div className="serviceContactHead">
@@ -33,11 +34,11 @@ export default function ServiceContacts() {
                 <a className="serviceAction call" href={`tel:${contactPhone}`} aria-label={`Appeler ${service.label} au ${contactPhone}`}>
                   <span aria-hidden="true">☎</span> Appeler{phones.length > 1 ? ` ${index + 1}` : ''}
                 </a>
-                <a className="serviceAction whatsapp" href={waHref(service.label, contactPhone)} target="_blank" rel="noreferrer" aria-label={`Écrire à ${service.label} au ${contactPhone} sur WhatsApp`}>
+                <a className="serviceAction whatsapp" href={index === 0 && service.whatsapp ? `https://wa.me/${service.whatsapp}?text=${encodeURIComponent(`Bonjour ${service.label}, je vous contacte depuis le site officiel de EXCELLENCIA COLLÈGE RIZIKI.`)}` : waHref(service.label, contactPhone)} target="_blank" rel="noreferrer" aria-label={`Écrire à ${service.label} au ${contactPhone} sur WhatsApp`}>
                   <span aria-hidden="true">◉</span> WhatsApp{phones.length > 1 ? ` ${index + 1}` : ''}
                 </a>
               </div>) : <span className="servicePending">Contact bientôt disponible</span>}
-              <a className="serviceAction write" href={`#message?service=${service.id}`} onClick={() => {
+              <a className="serviceAction write" href={`/contact/?service=${encodeURIComponent(service.id)}#message`} onClick={() => {
                 const select = document.querySelector<HTMLSelectElement>('select[name="service"]');
                 if (select) {
                   select.value = service.id;

@@ -24,7 +24,7 @@ Deno.serve(async (req) => {
 
     const service = createClient(url, serviceKey);
     const { data: profile } = await service.from('profiles').select('role').eq('id', user.id).single();
-    if (profile?.role !== 'system_admin') return json({ error: 'forbidden' }, 403);
+    if (!['admin_systeme','system_admin'].includes(profile?.role)) return json({ error: 'forbidden' }, 403);
 
     const payload = await req.json();
     const action = String(payload.action || 'list');
@@ -32,7 +32,7 @@ Deno.serve(async (req) => {
     if (action === 'list') {
       const { data: usersData, error: usersError } = await service.auth.admin.listUsers({ perPage: 1000 });
       if (usersError) throw usersError;
-      const { data: profiles, error: profilesError } = await service.from('profiles').select('id,full_name,service,role,created_at');
+      const { data: profiles, error: profilesError } = await service.from('profiles').select('id,full_name,service,role,active,created_at');
       if (profilesError) throw profilesError;
       const profileMap = new Map((profiles || []).map((item) => [item.id, item]));
       return json({ users: usersData.users.map((item) => ({
@@ -43,7 +43,8 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'create') {
-      const role = ['staff', 'manager', 'system_admin'].includes(payload.role) ? payload.role : 'staff';
+      const roles = ['admin_systeme','direction','gestionnaire','prefecture','directeur_etudes','discipline','secretariat','direction_primaire','communication'];
+      const role = roles.includes(payload.role) ? payload.role : 'secretariat';
       const { data, error } = await service.auth.admin.createUser({
         email: String(payload.email || '').trim(),
         password: String(payload.password || ''),
@@ -55,6 +56,7 @@ Deno.serve(async (req) => {
         full_name: String(payload.full_name || '').trim() || null,
         service: String(payload.service || '').trim() || null,
         role,
+        active: true,
       });
       if (profileError) {
         await service.auth.admin.deleteUser(data.user.id);
@@ -65,7 +67,8 @@ Deno.serve(async (req) => {
 
     if (action === 'update') {
       const targetId = String(payload.id || '');
-      const role = ['staff', 'manager', 'system_admin'].includes(payload.role) ? payload.role : 'staff';
+      const roles = ['admin_systeme','direction','gestionnaire','prefecture','directeur_etudes','discipline','secretariat','direction_primaire','communication'];
+      const role = roles.includes(payload.role) ? payload.role : 'secretariat';
       if (!targetId) return json({ error: 'missing_id' }, 400);
       if (payload.email || payload.password) {
         const attributes: Record<string, string> = {};
@@ -78,6 +81,7 @@ Deno.serve(async (req) => {
         full_name: String(payload.full_name || '').trim() || null,
         service: String(payload.service || '').trim() || null,
         role,
+        active: payload.active !== false,
       }).eq('id', targetId);
       if (error) throw error;
       return json({ ok: true });
