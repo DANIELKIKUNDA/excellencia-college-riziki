@@ -31,6 +31,25 @@
 @media(max-width:620px){body{padding-bottom:72px}.contactPremium .contactIntro h2{font-size:31px}.channelStrip{grid-template-columns:1fr}.serviceContactCard{padding:16px}.serviceActions{display:grid;grid-template-columns:1fr 1fr 1fr}.serviceAction{justify-content:center;padding:11px 8px}.mobileContactDock{position:fixed;display:grid;grid-template-columns:repeat(3,1fr);left:10px;right:10px;bottom:10px;z-index:50;background:rgba(255,255,255,.96);border:1px solid rgba(12,47,107,.14);border-radius:16px;padding:7px;box-shadow:0 16px 50px rgba(7,35,79,.24);backdrop-filter:blur(15px)}.mobileContactDock a{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 4px;text-decoration:none;color:var(--blue2);font-weight:850}.mobileContactDock a.wa{color:#147c3a}.mobileContactDock span{font-size:18px}.mobileContactDock small{font-size:10px}.heroContent{padding-bottom:100px}}
 @media(max-width:620px){.leadershipGrid{grid-template-columns:1fr}.leadershipCard{padding:20px 14px}}
 
+/* V12 — lisibilité mobile, héros lumineux et actions de contact fiables */
+.heroShade{background:linear-gradient(90deg,rgba(5,30,68,.76) 0%,rgba(5,30,68,.46) 43%,rgba(5,30,68,.06) 76%,transparent 100%)}
+.pageHero:after{background:linear-gradient(90deg,rgba(3,23,52,.68) 0%,rgba(3,23,52,.38) 46%,rgba(3,23,52,.08) 100%)}
+.pageHeroContent>p:last-child{color:rgba(255,255,255,.94)}
+@media(max-width:620px){
+  .heroShade{background:linear-gradient(90deg,rgba(5,30,68,.72),rgba(5,30,68,.3))}
+  .pageHero{min-height:340px}
+  .pageHero:after{background:linear-gradient(180deg,rgba(3,23,52,.15),rgba(3,23,52,.66))}
+  .pageHeroContent{padding-top:90px;padding-bottom:48px;text-align:center;display:flex;flex-direction:column;align-items:center}
+  .pageHeroContent>p:last-child{font-size:15px;margin-inline:auto}
+  .sectionHead{justify-content:center;text-align:center;align-items:center}
+  .sectionHead>div,.sectionHead p{margin-inline:auto}
+  .homeCta>.shell{align-items:center;text-align:center}
+  .reveal{opacity:1;transform:none}
+  .proofHead{margin-inline:auto}
+  .contactIntro{text-align:center;margin-inline:auto}
+  .channelStrip{text-align:center}
+}
+
 /* V7 — animations premium, accessibles et sobres */
 .reveal{opacity:0;transform:translateY(26px);transition:opacity .72s cubic-bezier(.2,.7,.2,1),transform .72s cubic-bezier(.2,.7,.2,1)}
 .reveal.isVisible{opacity:1;transform:none}
