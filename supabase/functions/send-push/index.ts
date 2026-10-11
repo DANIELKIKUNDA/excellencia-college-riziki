@@ -11,8 +11,8 @@ Deno.serve(async(req)=>{
   const {data:{user}}=await caller.auth.getUser();
   if(!user)return new Response(JSON.stringify({error:'unauthorized'}),{status:401,headers:{...cors,'Content-Type':'application/json'}});
   const service=createClient(url,Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
-  const {data:profile}=await service.from('profiles').select('role').eq('id',user.id).single();
-  if(!profile||!['admin_systeme','direction','gestionnaire','communication','manager','system_admin'].includes(profile.role))return new Response(JSON.stringify({error:'forbidden'}),{status:403,headers:{...cors,'Content-Type':'application/json'}});
+  const {data:profile}=await service.from('profiles').select('role,active').eq('id',user.id).single();
+  if(!profile||profile.active===false||!['admin_systeme','direction','gestionnaire','communication','manager','system_admin'].includes(profile.role))return new Response(JSON.stringify({error:'forbidden'}),{status:403,headers:{...cors,'Content-Type':'application/json'}});
   const payload=await req.json(); const audience=payload.audience||'public';
   let q=service.from('push_subscriptions').select('id,endpoint,p256dh,auth');
   if(audience!=='public')q=q.in('audience',['public',audience]);

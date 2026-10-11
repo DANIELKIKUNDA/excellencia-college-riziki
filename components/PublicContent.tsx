@@ -12,5 +12,5 @@ export default function PublicContent({type}:{type:'news'|'announcements'}){
  })();return()=>{alive=false}},[type]);
  if(!loaded) return <div className="emptyState">Chargement…</div>;
  if(!items.length) return <div className="emptyState">{type==='news'?'Les premières activités réelles seront publiées ici dès réception des photos et vidéos des classes et ateliers.':'Les communiqués officiels de l’école seront publiés ici et pourront déclencher des notifications sur les téléphones des parents.'}</div>;
- return <div className="publicList">{items.map(x=><article key={x.id} className="publicItem"><div className="publicDate">{x.published_at?new Date(x.published_at).toLocaleDateString('fr-FR'):''}</div><h3>{x.title}</h3><p>{x.excerpt||x.body}</p></article>)}</div>
+ return <div className="publicList">{items.map(x=><article key={x.id} className="publicItem"><div className="publicMeta"><div className="publicDate">{x.published_at?new Date(x.published_at).toLocaleDateString('fr-FR'):''}</div>{type==='announcements'&&x.audience&&<span className="audiencePill">{x.audience==='public'?'Tous les parents':x.audience}</span>}</div><h3>{x.title}</h3><p>{x.excerpt||x.body}</p></article>)}</div>
 }
