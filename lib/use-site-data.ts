@@ -5,7 +5,7 @@ import { SCHOOL, SERVICES, type SchoolService } from '@/lib/config';
 import { hasSupabase, supabase } from '@/lib/supabase-browser';
 
 export type SiteSettings = typeof SCHOOL;
-export type DynamicService = SchoolService & { whatsapp?: string | null; active?: boolean; sort_order?: number };
+export type DynamicService = SchoolService & { whatsapp?: string | null; photo_url?: string | null; active?: boolean; sort_order?: number };
 
 export function useSiteSettings() {
   const [settings, setSettings] = useState(SCHOOL);
@@ -23,7 +23,7 @@ export function useSchoolServices() {
   const [services, setServices] = useState<DynamicService[]>(SERVICES.map((item, index) => ({ ...item, sort_order: index })));
   useEffect(() => {
     if (!hasSupabase) return;
-    supabase.from('school_services').select('id,label,person_name,phone,whatsapp,alternate_phone,active,sort_order').eq('active', true).order('sort_order').then(({ data }) => {
+    supabase.from('school_services').select('id,label,person_name,phone,whatsapp,alternate_phone,photo_url,active,sort_order').eq('active', true).order('sort_order').then(({ data }) => {
       if (!data?.length) return;
       setServices(data.map(item => ({
         id: item.id,
@@ -31,6 +31,7 @@ export function useSchoolServices() {
         person: item.person_name,
         phone: item.phone,
         whatsapp: item.whatsapp,
+        photo_url: item.photo_url,
         alternatePhones: item.alternate_phone ? [item.alternate_phone] : [],
         active: item.active,
         sort_order: item.sort_order,

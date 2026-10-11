@@ -5,6 +5,13 @@ alter table public.profiles add column if not exists active boolean not null def
 alter table public.profiles drop constraint if exists profiles_role_check;
 update public.profiles set role = 'admin_systeme' where role = 'system_admin';
 update public.profiles set role = 'gestionnaire' where role = 'manager';
+-- Les anciens profils génériques reçoivent le rôle le moins privilégié.
+-- Cela évite l'erreur 23514 sans accorder de droits administrateur.
+update public.profiles set role = 'secretariat'
+where role is null or role not in (
+  'admin_systeme','direction','gestionnaire','prefecture','directeur_etudes',
+  'discipline','secretariat','direction_primaire','communication'
+);
 alter table public.profiles add constraint profiles_role_check check (role in (
   'admin_systeme','direction','gestionnaire','prefecture','directeur_etudes',
   'discipline','secretariat','direction_primaire','communication'
@@ -31,10 +38,12 @@ create table if not exists public.school_services (
   phone text,
   whatsapp text,
   alternate_phone text,
+  photo_url text,
   sort_order integer not null default 0,
   active boolean not null default true,
   updated_at timestamptz not null default now()
 );
+alter table public.school_services add column if not exists photo_url text;
 
 create table if not exists public.social_links (
   platform text primary key check (platform in ('youtube','facebook','tiktok','instagram')),

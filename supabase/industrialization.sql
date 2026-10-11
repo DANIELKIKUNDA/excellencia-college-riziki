@@ -1,6 +1,22 @@
 -- EXCELLENCIA COLLÈGE RIZIKI — industrialisation v1
 -- Réexécutable dans Supabase SQL Editor, sans suppression de données.
 
+-- Compatibilité avec les anciens rôles avant de poser/renouveler la contrainte.
+alter table public.profiles drop constraint if exists profiles_role_check;
+update public.profiles set role='admin_systeme' where role='system_admin';
+update public.profiles set role='gestionnaire' where role='manager';
+update public.profiles set role='secretariat'
+where role is null or role not in (
+  'admin_systeme','direction','gestionnaire','prefecture','directeur_etudes',
+  'discipline','secretariat','direction_primaire','communication'
+);
+alter table public.profiles add constraint profiles_role_check check (role in (
+  'admin_systeme','direction','gestionnaire','prefecture','directeur_etudes',
+  'discipline','secretariat','direction_primaire','communication'
+));
+
+alter table public.school_services add column if not exists photo_url text;
+
 create table if not exists public.notification_jobs (
   id uuid primary key default gen_random_uuid(),
   title text not null check (char_length(title) between 1 and 70),
