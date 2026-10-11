@@ -23,7 +23,7 @@ export function useSchoolServices() {
   const [services, setServices] = useState<DynamicService[]>(SERVICES.map((item, index) => ({ ...item, sort_order: index })));
   useEffect(() => {
     if (!hasSupabase) return;
-    supabase.from('school_services').select('id,label,person_name,phone,whatsapp,alternate_phone,photo_url,active,sort_order').eq('active', true).order('sort_order').then(({ data }) => {
+    supabase.from('school_services').select('*').eq('active', true).order('sort_order').then(({ data }) => {
       if (!data?.length) return;
       setServices(data.map(item => ({
         id: item.id,

@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 
 const base=process.env.E2E_BASE_URL||'http://localhost:3000';
-const edge='C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe';
+const edge='C:/Program Files/Google/Chrome/Application/chrome.exe';
 const output=path.resolve('artifacts/e2e');
 await fs.mkdir(output,{recursive:true});
 const browser=await chromium.launch({headless:true,executablePath:edge});

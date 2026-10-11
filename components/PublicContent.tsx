@@ -7,7 +7,8 @@ export default function PublicContent({type}:{type:'news'|'announcements'}){
  useEffect(()=>{let alive=true;(async()=>{
    if(!hasSupabase){if(alive)setLoaded(true);return;}
    const table=type==='news'?'news':'announcements';
-   const {data}=await supabase.from(table).select('id,title,excerpt,body,published_at,audience').eq('published',true).order('published_at',{ascending:false}).limit(6);
+   const columns=type==='news'?'id,title,excerpt,body,published_at':'id,title,body,published_at,audience';
+   const {data}=await supabase.from(table).select(columns).eq('published',true).order('published_at',{ascending:false}).limit(6);
    if(alive){setItems((data||[]) as Item[]);setLoaded(true);}
  })();return()=>{alive=false}},[type]);
  if(!loaded) return <div className="emptyState">Chargement…</div>;
