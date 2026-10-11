@@ -1,38 +1,637 @@
-'use client';
-import { FormEvent, useEffect, useState } from 'react';
-import { hasSupabase, supabase } from '@/lib/supabase-browser';
-import AccountManager from '@/components/AccountManager';
-import MediaManager from '@/components/MediaManager';
-import SystemSettingsManager from '@/components/SystemSettingsManager';
-import AdminOverview from '@/components/AdminOverview';
-import NotificationManager from '@/components/NotificationManager';
-import PasswordField from '@/components/PasswordField';
-type Msg={id:string;name:string;phone:string;student_name?:string;student_class?:string;service:string;subject:string;message:string;status:string;created_at:string};
-type Content={id:string;title:string;excerpt?:string;body?:string;audience?:string;published:boolean;published_at?:string};
-type Profile={id:string;full_name:string|null;service:string|null;role:string;active?:boolean};
-export default function AdminConsole(){
- const [messages,setMessages]=useState<Msg[]|null>(null),[news,setNews]=useState<Content[]>([]),[ann,setAnn]=useState<Content[]>([]),[profile,setProfile]=useState<Profile|null>(null); const [error,setError]=useState(''),[login,setLogin]=useState(false),[tab,setTab]=useState<'dashboard'|'messages'|'news'|'announcements'|'notifications'|'media'|'settings'|'accounts'>('dashboard');
- async function load(){if(!hasSupabase){setLogin(true);setError('Supabase doit être configuré pour activer l’administration.');return}const {data:{session}}=await supabase.auth.getSession();if(!session){setLogin(true);setMessages(null);return}const {data:p,error:pe}=await supabase.from('profiles').select('id,full_name,service,role,active').eq('id',session.user.id).maybeSingle();if(pe||!p){setError('Profil administrateur introuvable.');setLogin(true);return}if(p.active===false){await supabase.auth.signOut();setError('Ce compte est désactivé. Contactez l’administrateur système.');setLogin(true);return}setProfile(p as Profile);const {data:m,error:me}=await supabase.from('contact_messages').select('*').order('created_at',{ascending:false});if(me){setError(me.message);return}setMessages((m||[]) as Msg[]);setLogin(false);await Promise.all([loadContent('news'),loadContent('announcements')]);}
- async function loadContent(type:'news'|'announcements'){const {data}=await supabase.from(type).select('*').order('created_at',{ascending:false});type==='news'?setNews((data||[]) as Content[]):setAnn((data||[]) as Content[])}
- useEffect(()=>{load();const {data:{subscription}}=supabase.auth.onAuthStateChange(()=>{load()});return()=>subscription.unsubscribe()},[]);
- async function doLogin(e:FormEvent<HTMLFormElement>){e.preventDefault();const fd=new FormData(e.currentTarget);const {error:ae}=await supabase.auth.signInWithPassword({email:String(fd.get('email')||''),password:String(fd.get('password')||'')});if(ae){setError('E-mail ou mot de passe incorrect.');return}setError('');await load()}
- async function recoverPassword(){const email=prompt('Adresse e-mail du compte');if(!email)return;const redirectTo=`${window.location.origin}/auth/callback/`;const {error:recoveryError}=await supabase.auth.resetPasswordForEmail(email.trim(),{redirectTo});setError(recoveryError?'Impossible d’envoyer le lien. Vérifiez l’adresse et réessayez.':'Si ce compte existe, un lien sécurisé vient d’être envoyé.');}
- async function setStatus(id:string,status:string){const {error:e}=await supabase.from('contact_messages').update({status,updated_at:new Date().toISOString()}).eq('id',id);if(e)setError(e.message);await load()}
- async function publish(event:FormEvent<HTMLFormElement>,type:'news'|'announcements'){event.preventDefault();const form=event.currentTarget;const fd=new FormData(form);const title=String(fd.get('title')||'').trim();const published=fd.get('published')==='on';const row:any={title,body:String(fd.get('body')||'').trim(),published,published_at:published?new Date().toISOString():null};if(type==='news'){row.excerpt=String(fd.get('excerpt')||'').trim();row.slug=`${Date.now()}-${title.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'')}`;}else row.audience=String(fd.get('audience')||'public');const {data:{user}}=await supabase.auth.getUser();row.created_by=user?.id||null;const {error:insertError}=await supabase.from(type).insert(row);if(insertError){setError(insertError.message);return}if(published&&fd.get('notify')==='on')await notifyPayload(type,title,type==='announcements'?row.audience:'public');form.reset();setError('');await loadContent(type)}
- async function toggle(type:'news'|'announcements',x:Content){const published=!x.published;await supabase.from(type).update({published,published_at:published?(x.published_at||new Date().toISOString()):x.published_at}).eq('id',x.id);await loadContent(type)}
- async function edit(type:'news'|'announcements',x:Content){const title=prompt('Titre',x.title);if(title===null)return;const body=prompt('Contenu',x.body||x.excerpt||'');if(body===null)return;const row:any={title,body};if(type==='news')row.excerpt=prompt('Résumé',x.excerpt||'')||'';const {error:e}=await supabase.from(type).update(row).eq('id',x.id);if(e)setError(e.message);await loadContent(type)}
- async function remove(type:'news'|'announcements',id:string){if(!confirm('Supprimer définitivement ce contenu ?'))return;await supabase.from(type).delete().eq('id',id);await loadContent(type)}
- async function notifyPayload(type:'news'|'announcements',title:string,audience='public'){const {error:e,data}=await supabase.functions.invoke('send-push',{body:{title:type==='news'?'Nouvelle actualité — Riziki':'Nouveau communiqué — Riziki',body:title,url:type==='news'?'/#actualites':'/#communiques',audience}});setError(e?'Notification impossible.':`Notification envoyée${typeof data?.sent==='number'?` à ${data.sent} appareil(s)`:''}.`)}
- async function notifyNow(type:'news'|'announcements',x:Content){await notifyPayload(type,x.title,type==='announcements'?(x.audience||'public'):'public')}
- async function logout(){await supabase.auth.signOut();setMessages(null);setLogin(true)}
- if(login)return <div className="adminLogin"><h2>Connexion du personnel</h2><p>Accès réservé aux responsables autorisés de l’école.</p><form onSubmit={doLogin}><label>E-mail<input name="email" type="email" autoComplete="email" required/></label><PasswordField label="Mot de passe" autoComplete="current-password"/><button className="btn primary">Se connecter</button><button className="authTextButton" type="button" onClick={recoverPassword}>Mot de passe oublié ?</button>{error&&<p className={error.startsWith('Si ce compte')?'formStatus':'formStatus error'}>{error}</p>}</form></div>;
- if(!messages)return <div className="adminLogin"><p>Chargement…</p>{error&&<p className="formStatus error">{error}</p>}</div>;
- const content=tab==='news'?news:ann;
- const isAdmin=profile?.role==='admin_systeme'||profile?.role==='system_admin';
- const canNews=isAdmin||['direction','gestionnaire','communication','manager'].includes(profile?.role||'');
- const canAnnouncements=canNews||['prefecture','directeur_etudes','discipline','secretariat','direction_primaire'].includes(profile?.role||'');
- const canMedia=canNews;
- const roleLabel=isAdmin?'Administrateur système':`Rôle : ${profile?.role||profile?.service||'non défini'}`;
- return <div className="adminConsole premiumAdmin"><aside className="adminSidebar"><div className="adminIdentity"><span>{(profile?.full_name||'R').charAt(0)}</span><div><strong>{profile?.full_name||'Responsable'}</strong><small>{roleLabel}</small></div></div><nav className="adminTabs" aria-label="Administration"><button className={tab==='dashboard'?'active':''} onClick={()=>setTab('dashboard')}><i>⌂</i> Tableau de bord</button><button className={tab==='messages'?'active':''} onClick={()=>setTab('messages')}><i>✉</i> Messages <b>{messages.length}</b></button>{canNews&&<button className={tab==='news'?'active':''} onClick={()=>setTab('news')}><i>◆</i> Actualités <b>{news.length}</b></button>}{canAnnouncements&&<button className={tab==='announcements'?'active':''} onClick={()=>setTab('announcements')}><i>▣</i> Communiqués <b>{ann.length}</b></button>}{canNews&&<button className={tab==='notifications'?'active':''} onClick={()=>setTab('notifications')}><i>●</i> Notifications</button>}{canMedia&&<button className={tab==='media'?'active':''} onClick={()=>setTab('media')}><i>▧</i> Médiathèque</button>}{isAdmin&&<><span className="navGroup">CONFIGURATION</span><button className={tab==='settings'?'active':''} onClick={()=>setTab('settings')}><i>⚙</i> Paramètres</button><button className={tab==='accounts'?'active':''} onClick={()=>setTab('accounts')}><i>♙</i> Responsables</button></>}</nav><button className="adminLogout" onClick={logout}>Se déconnecter</button></aside><section className="adminWorkspace"><div className="adminTop"><div><p className="adminEyebrow">EXCELLENCIA COLLÈGE RIZIKI</p><h1>{tab==='dashboard'?'Tableau de bord':tab==='messages'?'Messages':tab==='news'?'Actualités':tab==='announcements'?'Communiqués':tab==='notifications'?'Notifications':tab==='media'?'Médiathèque':tab==='settings'?'Paramètres':'Responsables'}</h1></div><a href="/" target="_blank" rel="noreferrer" className="viewSite">Voir le site ↗</a></div>{error&&<p className="formStatus error">{error}</p>}{tab==='dashboard'?<AdminOverview messages={messages} news={news} announcements={ann} onNavigate={next=>setTab(next)}/>:tab==='messages'?(messages.length===0?<div className="emptyState">Aucun message pour le moment.</div>:<div className="messageList">{messages.map(m=><article className="messageCard" key={m.id}><div className="messageMeta"><strong>{m.subject}</strong><span>{new Date(m.created_at).toLocaleString('fr-FR')}</span></div><p><b>{m.name}</b> · {m.phone}</p>{(m.student_name||m.student_class)&&<p>Élève : {m.student_name||'—'} · Classe : {m.student_class||'—'}</p>}<p className="messageService">Service : {m.service}</p><p>{m.message}</p><div className="statusBtns"><button onClick={()=>setStatus(m.id,'new')} className={m.status==='new'?'active':''}>Nouveau</button><button onClick={()=>setStatus(m.id,'in_progress')} className={m.status==='in_progress'?'active':''}>En traitement</button><button onClick={()=>setStatus(m.id,'closed')} className={m.status==='closed'?'active':''}>Clôturé</button></div></article>)}</div>):tab==='news'&&canNews?<ContentManager type="news" items={content} onPublish={publish} onEdit={edit} onToggle={toggle} onRemove={remove} onNotify={notifyNow}/>:tab==='announcements'&&canAnnouncements?<ContentManager type="announcements" items={content} onPublish={publish} onEdit={edit} onToggle={toggle} onRemove={remove} onNotify={notifyNow}/>:tab==='notifications'&&canNews?<NotificationManager/>:tab==='media'&&canMedia?<MediaManager/>:tab==='settings'&&isAdmin?<SystemSettingsManager/>:tab==='accounts'&&isAdmin?<AccountManager currentUserId={profile.id}/>:null}</section></div>
+"use client";
+import { FormEvent, useEffect, useState } from "react";
+import { hasSupabase, supabase } from "@/lib/supabase-browser";
+import AccountManager from "@/components/AccountManager";
+import MediaManager from "@/components/MediaManager";
+import SystemSettingsManager from "@/components/SystemSettingsManager";
+import AdminOverview from "@/components/AdminOverview";
+import NotificationManager from "@/components/NotificationManager";
+import PasswordField from "@/components/PasswordField";
+type Msg = {
+  id: string;
+  name: string;
+  phone: string;
+  student_name?: string;
+  student_class?: string;
+  service: string;
+  subject: string;
+  message: string;
+  status: string;
+  created_at: string;
+};
+type Content = {
+  id: string;
+  title: string;
+  excerpt?: string;
+  body?: string;
+  audience?: string;
+  published: boolean;
+  published_at?: string;
+};
+type Profile = {
+  id: string;
+  full_name: string | null;
+  service: string | null;
+  role: string;
+  active?: boolean;
+};
+export default function AdminConsole() {
+  const [messages, setMessages] = useState<Msg[] | null>(null),
+    [news, setNews] = useState<Content[]>([]),
+    [ann, setAnn] = useState<Content[]>([]),
+    [profile, setProfile] = useState<Profile | null>(null);
+  const [error, setError] = useState(""),
+    [login, setLogin] = useState(false),
+    [tab, setTab] = useState<
+      | "dashboard"
+      | "messages"
+      | "news"
+      | "announcements"
+      | "notifications"
+      | "media"
+      | "settings"
+      | "accounts"
+    >("dashboard");
+  async function load() {
+    if (!hasSupabase) {
+      setLogin(true);
+      setError("Supabase doit être configuré pour activer l’administration.");
+      return;
+    }
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) {
+      setLogin(true);
+      setMessages(null);
+      return;
+    }
+    const { data: p, error: pe } = await supabase
+      .from("profiles")
+      .select("id,full_name,service,role,active")
+      .eq("id", session.user.id)
+      .maybeSingle();
+    if (pe || !p) {
+      setError("Profil administrateur introuvable.");
+      setLogin(true);
+      return;
+    }
+    if (p.active === false) {
+      await supabase.auth.signOut();
+      setError("Ce compte est désactivé. Contactez l’administrateur système.");
+      setLogin(true);
+      return;
+    }
+    setProfile(p as Profile);
+    const { data: m, error: me } = await supabase
+      .from("contact_messages")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (me) {
+      setError(me.message);
+      return;
+    }
+    setMessages((m || []) as Msg[]);
+    setLogin(false);
+    await Promise.all([loadContent("news"), loadContent("announcements")]);
+  }
+  async function loadContent(type: "news" | "announcements") {
+    const { data } = await supabase
+      .from(type)
+      .select("*")
+      .order("created_at", { ascending: false });
+    type === "news"
+      ? setNews((data || []) as Content[])
+      : setAnn((data || []) as Content[]);
+  }
+  useEffect(() => {
+    load();
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(() => {
+      load();
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+  async function doLogin(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const fd = new FormData(e.currentTarget);
+    const { error: ae } = await supabase.auth.signInWithPassword({
+      email: String(fd.get("email") || ""),
+      password: String(fd.get("password") || ""),
+    });
+    if (ae) {
+      setError("E-mail ou mot de passe incorrect.");
+      return;
+    }
+    setError("");
+    await load();
+  }
+  async function recoverPassword() {
+    const email = prompt("Adresse e-mail du compte");
+    if (!email) return;
+    const redirectTo = `${window.location.origin}/auth/callback/`;
+    const { error: recoveryError } = await supabase.auth.resetPasswordForEmail(
+      email.trim(),
+      { redirectTo },
+    );
+    setError(
+      recoveryError
+        ? "Impossible d’envoyer le lien. Vérifiez l’adresse et réessayez."
+        : "Si ce compte existe, un lien sécurisé vient d’être envoyé.",
+    );
+  }
+  async function setStatus(id: string, status: string) {
+    const { error: e } = await supabase
+      .from("contact_messages")
+      .update({ status, updated_at: new Date().toISOString() })
+      .eq("id", id);
+    if (e) setError(e.message);
+    await load();
+  }
+  async function publish(
+    event: FormEvent<HTMLFormElement>,
+    type: "news" | "announcements",
+  ) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const fd = new FormData(form);
+    const title = String(fd.get("title") || "").trim();
+    const published = fd.get("published") === "on";
+    const row: any = {
+      title,
+      body: String(fd.get("body") || "").trim(),
+      published,
+      published_at: published ? new Date().toISOString() : null,
+    };
+    if (type === "news") {
+      row.excerpt = String(fd.get("excerpt") || "").trim();
+      row.slug = `${Date.now()}-${title
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/(^-|-$)/g, "")}`;
+    } else row.audience = String(fd.get("audience") || "public");
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    row.created_by = user?.id || null;
+    const { error: insertError } = await supabase.from(type).insert(row);
+    if (insertError) {
+      setError(insertError.message);
+      return;
+    }
+    if (published && fd.get("notify") === "on")
+      await notifyPayload(
+        type,
+        title,
+        type === "announcements" ? row.audience : "public",
+      );
+    form.reset();
+    setError("");
+    await loadContent(type);
+  }
+  async function toggle(type: "news" | "announcements", x: Content) {
+    const published = !x.published;
+    await supabase
+      .from(type)
+      .update({
+        published,
+        published_at: published
+          ? x.published_at || new Date().toISOString()
+          : x.published_at,
+      })
+      .eq("id", x.id);
+    await loadContent(type);
+  }
+  async function edit(type: "news" | "announcements", x: Content) {
+    const title = prompt("Titre", x.title);
+    if (title === null) return;
+    const body = prompt("Contenu", x.body || x.excerpt || "");
+    if (body === null) return;
+    const row: any = { title, body };
+    if (type === "news") row.excerpt = prompt("Résumé", x.excerpt || "") || "";
+    const { error: e } = await supabase.from(type).update(row).eq("id", x.id);
+    if (e) setError(e.message);
+    await loadContent(type);
+  }
+  async function remove(type: "news" | "announcements", id: string) {
+    if (!confirm("Supprimer définitivement ce contenu ?")) return;
+    await supabase.from(type).delete().eq("id", id);
+    await loadContent(type);
+  }
+  async function notifyPayload(
+    type: "news" | "announcements",
+    title: string,
+    audience = "public",
+  ) {
+    const { error: e, data } = await supabase.functions.invoke("send-push", {
+      body: {
+        title:
+          type === "news"
+            ? "Nouvelle actualité — Riziki"
+            : "Nouveau communiqué — Riziki",
+        body: title,
+        url: type === "news" ? "/#actualites" : "/#communiques",
+        audience,
+      },
+    });
+    setError(
+      e
+        ? "Notification impossible."
+        : `Notification envoyée${typeof data?.sent === "number" ? ` à ${data.sent} appareil(s)` : ""}.`,
+    );
+  }
+  async function notifyNow(type: "news" | "announcements", x: Content) {
+    await notifyPayload(
+      type,
+      x.title,
+      type === "announcements" ? x.audience || "public" : "public",
+    );
+  }
+  async function logout() {
+    await supabase.auth.signOut();
+    setMessages(null);
+    setLogin(true);
+  }
+  if (login)
+    return (
+      <div className="adminLogin">
+        <h2>Connexion du personnel</h2>
+        <p>Accès réservé aux responsables autorisés de l’école.</p>
+        <form onSubmit={doLogin}>
+          <label>
+            E-mail
+            <input name="email" type="email" autoComplete="email" required />
+          </label>
+          <PasswordField label="Mot de passe" autoComplete="current-password" />
+          <button className="btn primary">Se connecter</button>
+          <button
+            className="authTextButton"
+            type="button"
+            onClick={recoverPassword}
+          >
+            Mot de passe oublié ?
+          </button>
+          {error && (
+            <p
+              className={
+                error.startsWith("Si ce compte")
+                  ? "formStatus"
+                  : "formStatus error"
+              }
+            >
+              {error}
+            </p>
+          )}
+        </form>
+      </div>
+    );
+  if (!messages)
+    return (
+      <div className="adminLogin">
+        <p>Chargement…</p>
+        {error && <p className="formStatus error">{error}</p>}
+      </div>
+    );
+  const content = tab === "news" ? news : ann;
+  const isAdmin =
+    profile?.role === "admin_systeme" || profile?.role === "system_admin";
+  const canNews =
+    isAdmin ||
+    ["direction", "gestionnaire", "communication", "manager"].includes(
+      profile?.role || "",
+    );
+  const canAnnouncements =
+    canNews ||
+    [
+      "prefecture",
+      "directeur_etudes",
+      "discipline",
+      "secretariat",
+      "direction_primaire",
+    ].includes(profile?.role || "");
+  const canMedia = canNews;
+  const roleLabel = isAdmin
+    ? "Administrateur système"
+    : `Rôle : ${profile?.role || profile?.service || "non défini"}`;
+  return (
+    <div className="adminConsole premiumAdmin">
+      <aside className="adminSidebar">
+        <div className="adminIdentity">
+          <span>{(profile?.full_name || "R").charAt(0)}</span>
+          <div>
+            <strong>{profile?.full_name || "Responsable"}</strong>
+            <small>{roleLabel}</small>
+          </div>
+        </div>
+        <nav className="adminTabs" aria-label="Administration">
+          <button
+            className={tab === "dashboard" ? "active" : ""}
+            onClick={() => setTab("dashboard")}
+          >
+            <i>⌂</i> Tableau de bord
+          </button>
+          <button
+            className={tab === "messages" ? "active" : ""}
+            onClick={() => setTab("messages")}
+          >
+            <i>✉</i> Messages <b>{messages.length}</b>
+          </button>
+          {canNews && (
+            <button
+              className={tab === "news" ? "active" : ""}
+              onClick={() => setTab("news")}
+            >
+              <i>◆</i> Actualités <b>{news.length}</b>
+            </button>
+          )}
+          {canAnnouncements && (
+            <button
+              className={tab === "announcements" ? "active" : ""}
+              onClick={() => setTab("announcements")}
+            >
+              <i>▣</i> Communiqués <b>{ann.length}</b>
+            </button>
+          )}
+          {canNews && (
+            <button
+              className={tab === "notifications" ? "active" : ""}
+              onClick={() => setTab("notifications")}
+            >
+              <i>●</i> Notifications
+            </button>
+          )}
+          {canMedia && (
+            <button
+              className={tab === "media" ? "active" : ""}
+              onClick={() => setTab("media")}
+            >
+              <i>▧</i> Médiathèque
+            </button>
+          )}
+          {isAdmin && (
+            <>
+              <span className="navGroup">CONFIGURATION</span>
+              <button
+                className={tab === "settings" ? "active" : ""}
+                onClick={() => setTab("settings")}
+              >
+                <i>⚙</i> Paramètres
+              </button>
+              <button
+                className={tab === "accounts" ? "active" : ""}
+                onClick={() => setTab("accounts")}
+              >
+                <i>♙</i> Responsables
+              </button>
+            </>
+          )}
+        </nav>
+        <button className="adminLogout" onClick={logout}>
+          Se déconnecter
+        </button>
+      </aside>
+      <section className="adminWorkspace">
+        <div className="adminTop">
+          <div>
+            <p className="adminEyebrow">EXCELLENCIA COLLÈGE RIZIKI</p>
+            <h1>
+              {tab === "dashboard"
+                ? "Tableau de bord"
+                : tab === "messages"
+                  ? "Messages"
+                  : tab === "news"
+                    ? "Actualités"
+                    : tab === "announcements"
+                      ? "Communiqués"
+                      : tab === "notifications"
+                        ? "Notifications"
+                        : tab === "media"
+                          ? "Médiathèque"
+                          : tab === "settings"
+                            ? "Paramètres"
+                            : "Responsables"}
+            </h1>
+          </div>
+          <a href="/" className="viewSite">
+            Voir le site →
+          </a>
+        </div>
+        {error && <p className="formStatus error">{error}</p>}
+        {tab === "dashboard" ? (
+          <AdminOverview
+            messages={messages}
+            news={news}
+            announcements={ann}
+            onNavigate={(next) => setTab(next)}
+          />
+        ) : tab === "messages" ? (
+          messages.length === 0 ? (
+            <div className="emptyState">Aucun message pour le moment.</div>
+          ) : (
+            <div className="messageList">
+              {messages.map((m) => (
+                <article className="messageCard" key={m.id}>
+                  <div className="messageMeta">
+                    <strong>{m.subject}</strong>
+                    <span>
+                      {new Date(m.created_at).toLocaleString("fr-FR")}
+                    </span>
+                  </div>
+                  <p>
+                    <b>{m.name}</b> · {m.phone}
+                  </p>
+                  {(m.student_name || m.student_class) && (
+                    <p>
+                      Élève : {m.student_name || "—"} · Classe :{" "}
+                      {m.student_class || "—"}
+                    </p>
+                  )}
+                  <p className="messageService">Service : {m.service}</p>
+                  <p>{m.message}</p>
+                  <div className="statusBtns">
+                    <button
+                      onClick={() => setStatus(m.id, "new")}
+                      className={m.status === "new" ? "active" : ""}
+                    >
+                      Nouveau
+                    </button>
+                    <button
+                      onClick={() => setStatus(m.id, "in_progress")}
+                      className={m.status === "in_progress" ? "active" : ""}
+                    >
+                      En traitement
+                    </button>
+                    <button
+                      onClick={() => setStatus(m.id, "closed")}
+                      className={m.status === "closed" ? "active" : ""}
+                    >
+                      Clôturé
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )
+        ) : tab === "news" && canNews ? (
+          <ContentManager
+            type="news"
+            items={content}
+            onPublish={publish}
+            onEdit={edit}
+            onToggle={toggle}
+            onRemove={remove}
+            onNotify={notifyNow}
+          />
+        ) : tab === "announcements" && canAnnouncements ? (
+          <ContentManager
+            type="announcements"
+            items={content}
+            onPublish={publish}
+            onEdit={edit}
+            onToggle={toggle}
+            onRemove={remove}
+            onNotify={notifyNow}
+          />
+        ) : tab === "notifications" && canNews ? (
+          <NotificationManager />
+        ) : tab === "media" && canMedia ? (
+          <MediaManager />
+        ) : tab === "settings" && isAdmin ? (
+          <SystemSettingsManager />
+        ) : tab === "accounts" && isAdmin ? (
+          <AccountManager currentUserId={profile.id} />
+        ) : null}
+      </section>
+    </div>
+  );
 }
-function ContentManager({type,items,onPublish,onEdit,onToggle,onRemove,onNotify}:{type:'news'|'announcements';items:Content[];onPublish:any;onEdit:any;onToggle:any;onRemove:any;onNotify:any}){return <div className="contentAdmin"><form className="premiumForm" onSubmit={(e)=>onPublish(e,type)}><div className="formHeading"><span>NOUVELLE PUBLICATION</span><h3>{type==='news'?'Créer une actualité':'Créer un communiqué'}</h3><p>Décochez « Publier maintenant » pour conserver un brouillon.</p></div><label>Titre<input name="title" required placeholder={type==='news'?'Titre de l’actualité':'Objet du communiqué'}/></label>{type==='news'&&<label>Résumé<input name="excerpt" placeholder="Résumé visible sur l’accueil"/></label>}<label>Contenu<textarea name="body" rows={7} required placeholder="Rédigez une information claire et complète…"/></label>{type==='announcements'&&<label>Public concerné<select name="audience" defaultValue="public"><option value="public">Tous les parents / public</option><option value="maternelle">Maternelle</option><option value="primaire">Primaire</option><option value="secondaire">Secondaire</option></select><small>Ce choix cible aussi la notification mobile.</small></label>}<div className="publishOptions"><label className="check"><input name="published" type="checkbox" defaultChecked/> <span><b>Publier maintenant</b><small>Visible immédiatement sur le site</small></span></label><label className="check"><input name="notify" type="checkbox" defaultChecked/> <span><b>Notifier les abonnés</b><small>Envoie une alerte sur leur téléphone</small></span></label></div><button className="btn primary">Enregistrer la publication</button></form><div className="contentList"><div className="listHeading"><div><span>BIBLIOTHÈQUE</span><h3>{items.length} élément{items.length>1?'s':''}</h3></div></div>{items.length===0?<div className="emptyState">Aucun contenu. Votre première publication apparaîtra ici.</div>:items.map(x=><article className="contentRow" key={x.id}><div><span className={x.published?'badge live':'badge'}>{x.published?'Publié':'Brouillon'}</span>{x.audience&&<span className="badge audience">{x.audience}</span>}<h3>{x.title}</h3><p>{x.excerpt||x.body}</p></div><div className="rowActions"><button onClick={()=>onEdit(type,x)}>Modifier</button><button onClick={()=>onToggle(type,x)}>{x.published?'Dépublier':'Publier'}</button>{x.published&&<button onClick={()=>onNotify(type,x)}>Notifier</button>}<button className="danger" onClick={()=>onRemove(type,x.id)}>Supprimer</button></div></article>)}</div></div>}
+function ContentManager({
+  type,
+  items,
+  onPublish,
+  onEdit,
+  onToggle,
+  onRemove,
+  onNotify,
+}: {
+  type: "news" | "announcements";
+  items: Content[];
+  onPublish: any;
+  onEdit: any;
+  onToggle: any;
+  onRemove: any;
+  onNotify: any;
+}) {
+  return (
+    <div className="contentAdmin">
+      <form className="premiumForm" onSubmit={(e) => onPublish(e, type)}>
+        <div className="formHeading">
+          <span>NOUVELLE PUBLICATION</span>
+          <h3>
+            {type === "news" ? "Créer une actualité" : "Créer un communiqué"}
+          </h3>
+          <p>Décochez « Publier maintenant » pour conserver un brouillon.</p>
+        </div>
+        <label>
+          Titre
+          <input
+            name="title"
+            required
+            placeholder={
+              type === "news" ? "Titre de l’actualité" : "Objet du communiqué"
+            }
+          />
+        </label>
+        {type === "news" && (
+          <label>
+            Résumé
+            <input name="excerpt" placeholder="Résumé visible sur l’accueil" />
+          </label>
+        )}
+        <label>
+          Contenu
+          <textarea
+            name="body"
+            rows={7}
+            required
+            placeholder="Rédigez une information claire et complète…"
+          />
+        </label>
+        {type === "announcements" && (
+          <label>
+            Public concerné
+            <select name="audience" defaultValue="public">
+              <option value="public">Tous les parents / public</option>
+              <option value="maternelle">Maternelle</option>
+              <option value="primaire">Primaire</option>
+              <option value="secondaire">Secondaire</option>
+            </select>
+            <small>Ce choix cible aussi la notification mobile.</small>
+          </label>
+        )}
+        <div className="publishOptions">
+          <label className="check">
+            <input name="published" type="checkbox" defaultChecked />{" "}
+            <span>
+              <b>Publier maintenant</b>
+              <small>Visible immédiatement sur le site</small>
+            </span>
+          </label>
+          <label className="check">
+            <input name="notify" type="checkbox" defaultChecked />{" "}
+            <span>
+              <b>Notifier les abonnés</b>
+              <small>Envoie une alerte sur leur téléphone</small>
+            </span>
+          </label>
+        </div>
+        <button className="btn primary">Enregistrer la publication</button>
+      </form>
+      <div className="contentList">
+        <div className="listHeading">
+          <div>
+            <span>BIBLIOTHÈQUE</span>
+            <h3>
+              {items.length} élément{items.length > 1 ? "s" : ""}
+            </h3>
+          </div>
+        </div>
+        {items.length === 0 ? (
+          <div className="emptyState">
+            Aucun contenu. Votre première publication apparaîtra ici.
+          </div>
+        ) : (
+          items.map((x) => (
+            <article className="contentRow" key={x.id}>
+              <div>
+                <span className={x.published ? "badge live" : "badge"}>
+                  {x.published ? "Publié" : "Brouillon"}
+                </span>
+                {x.audience && (
+                  <span className="badge audience">{x.audience}</span>
+                )}
+                <h3>{x.title}</h3>
+                <p>{x.excerpt || x.body}</p>
+              </div>
+              <div className="rowActions">
+                <button onClick={() => onEdit(type, x)}>Modifier</button>
+                <button onClick={() => onToggle(type, x)}>
+                  {x.published ? "Dépublier" : "Publier"}
+                </button>
+                {x.published && (
+                  <button onClick={() => onNotify(type, x)}>Notifier</button>
+                )}
+                <button className="danger" onClick={() => onRemove(type, x.id)}>
+                  Supprimer
+                </button>
+              </div>
+            </article>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
