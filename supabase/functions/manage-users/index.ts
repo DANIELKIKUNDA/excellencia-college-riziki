@@ -23,8 +23,8 @@ Deno.serve(async (req) => {
     if (!user) return json({ error: 'unauthorized' }, 401);
 
     const service = createClient(url, serviceKey);
-    const { data: profile } = await service.from('profiles').select('role').eq('id', user.id).single();
-    if (!['admin_systeme','system_admin'].includes(profile?.role)) return json({ error: 'forbidden' }, 403);
+    const { data: profile } = await service.from('profiles').select('role,active').eq('id', user.id).single();
+    if (profile?.active === false || !['admin_systeme','system_admin'].includes(profile?.role)) return json({ error: 'forbidden' }, 403);
 
     const payload = await req.json();
     const action = String(payload.action || 'list');
