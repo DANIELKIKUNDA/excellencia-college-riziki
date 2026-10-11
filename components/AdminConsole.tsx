@@ -6,6 +6,7 @@ import MediaManager from '@/components/MediaManager';
 import SystemSettingsManager from '@/components/SystemSettingsManager';
 import AdminOverview from '@/components/AdminOverview';
 import NotificationManager from '@/components/NotificationManager';
+import PasswordField from '@/components/PasswordField';
 type Msg={id:string;name:string;phone:string;student_name?:string;student_class?:string;service:string;subject:string;message:string;status:string;created_at:string};
 type Content={id:string;title:string;excerpt?:string;body?:string;audience?:string;published:boolean;published_at?:string};
 type Profile={id:string;full_name:string|null;service:string|null;role:string;active?:boolean};
@@ -24,7 +25,7 @@ export default function AdminConsole(){
  async function notifyPayload(type:'news'|'announcements',title:string,audience='public'){const {error:e,data}=await supabase.functions.invoke('send-push',{body:{title:type==='news'?'Nouvelle actualité — Riziki':'Nouveau communiqué — Riziki',body:title,url:type==='news'?'/#actualites':'/#communiques',audience}});setError(e?'Notification impossible.':`Notification envoyée${typeof data?.sent==='number'?` à ${data.sent} appareil(s)`:''}.`)}
  async function notifyNow(type:'news'|'announcements',x:Content){await notifyPayload(type,x.title,type==='announcements'?(x.audience||'public'):'public')}
  async function logout(){await supabase.auth.signOut();setMessages(null);setLogin(true)}
- if(login)return <div className="adminLogin"><h2>Connexion du personnel</h2><p>Accès réservé aux responsables autorisés de l’école.</p><form onSubmit={doLogin}><label>E-mail<input name="email" type="email" autoComplete="email" required/></label><label>Mot de passe<input name="password" type="password" autoComplete="current-password" required/></label><button className="btn primary">Se connecter</button><button className="authTextButton" type="button" onClick={recoverPassword}>Mot de passe oublié ?</button>{error&&<p className={error.startsWith('Si ce compte')?'formStatus':'formStatus error'}>{error}</p>}</form></div>;
+ if(login)return <div className="adminLogin"><h2>Connexion du personnel</h2><p>Accès réservé aux responsables autorisés de l’école.</p><form onSubmit={doLogin}><label>E-mail<input name="email" type="email" autoComplete="email" required/></label><PasswordField label="Mot de passe" autoComplete="current-password"/><button className="btn primary">Se connecter</button><button className="authTextButton" type="button" onClick={recoverPassword}>Mot de passe oublié ?</button>{error&&<p className={error.startsWith('Si ce compte')?'formStatus':'formStatus error'}>{error}</p>}</form></div>;
  if(!messages)return <div className="adminLogin"><p>Chargement…</p>{error&&<p className="formStatus error">{error}</p>}</div>;
  const content=tab==='news'?news:ann;
  const isAdmin=profile?.role==='admin_systeme'||profile?.role==='system_admin';
