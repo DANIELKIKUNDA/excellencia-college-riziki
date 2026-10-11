@@ -29,7 +29,7 @@ export default function PhotoGallery({ photos }: { photos: PhotoItem[] }) {
             onClick={() => setActive(photo)}
             aria-label={`Agrandir : ${photo.title}`}
           >
-            <Image src={photo.src} alt={photo.alt} fill className="cover" sizes="(max-width: 700px) 92vw, (max-width: 1100px) 46vw, 28vw" loading={index<2?'eager':'lazy'} decoding="async" />
+            <Image src={photo.src} alt={photo.alt} fill className="cover" sizes="(max-width: 700px) 92vw, (max-width: 1100px) 46vw, 28vw" loading={index<8?'eager':'lazy'} decoding="async" />
             <span className="photoOverlay">
               {photo.tag && <small>{photo.tag}</small>}
               <strong>{photo.title}</strong>
