@@ -25,7 +25,7 @@ page.on('pageerror', (error) => errors.push(error.message));
 
 await page.goto('https://excellenciariziki.com/admin/', { waitUntil: 'domcontentloaded', timeout: 60000 });
 await page.getByLabel('E-mail').fill(email);
-await page.getByLabel('Mot de passe').fill(password);
+await page.locator('input[name="password"]').fill(password);
 await page.getByRole('button', { name: 'Se connecter' }).click();
 await page.getByText('Centre de pilotage').waitFor({ timeout: 30000 });
 await page.reload({ waitUntil: 'domcontentloaded', timeout: 60000 });
