@@ -20,8 +20,18 @@ const browser = await chromium.launch({
 const context = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: 'fr-FR' });
 const page = await context.newPage();
 const errors = [];
+const functionCalls = [];
 page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
 page.on('pageerror', (error) => errors.push(error.message));
+page.on('response', async (response) => {
+  if (!response.url().includes('/functions/v1/manage-users')) return;
+  let body = '';
+  try { body = await response.text(); } catch {}
+  functionCalls.push({ status: response.status(), body: body.slice(0, 500) });
+});
+page.on('requestfailed', (request) => {
+  if (request.url().includes('manage-users')) functionCalls.push({ status: 0, body: request.failure()?.errorText || 'request_failed' });
+});
 
 await page.goto('https://excellenciariziki.com/admin/', { waitUntil: 'domcontentloaded', timeout: 60000 });
 await page.getByLabel('E-mail').fill(email);
@@ -31,6 +41,10 @@ await page.getByText('Centre de pilotage').waitFor({ timeout: 30000 });
 await page.reload({ waitUntil: 'domcontentloaded', timeout: 60000 });
 await page.getByText('Centre de pilotage').waitFor({ timeout: 30000 });
 const sessionPersisted = !await page.getByRole('button', { name: 'Se connecter' }).count();
+await page.goto('https://excellenciariziki.com/', { waitUntil: 'domcontentloaded', timeout: 60000 });
+await page.goto('https://excellenciariziki.com/admin/', { waitUntil: 'domcontentloaded', timeout: 60000 });
+await page.getByText('Centre de pilotage').waitFor({ timeout: 30000 });
+const sessionPersistedAcrossNavigation = !await page.getByRole('button', { name: 'Se connecter' }).count();
 
 const tabs = ['Tableau de bord', 'Messages', 'Actualit\u00e9s', 'Communiqu\u00e9s', 'Notifications', 'M\u00e9diath\u00e8que', 'Param\u00e8tres', 'Responsables'];
 const report = [];
@@ -55,10 +69,11 @@ for (const tab of tabs) {
       });
     return { scrollWidth: document.documentElement.scrollWidth, clientWidth: document.documentElement.clientWidth, bad };
   });
-  report.push({ tab, ...metrics });
+  const statusText = await page.locator('.formStatus').allTextContents();
+  report.push({ tab, ...metrics, statusText });
 }
 
-const result = { sessionPersisted, report, errors };
+const result = { sessionPersisted, sessionPersistedAcrossNavigation, report, errors, functionCalls };
 await fs.writeFile(path.join(output, 'report.json'), JSON.stringify(result, null, 2));
 console.log(JSON.stringify(result, null, 2));
 await context.close();
