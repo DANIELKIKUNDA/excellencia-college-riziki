@@ -72,9 +72,9 @@ Le site public, son domaine, son export statique et sa PWA restent opérationnel
 
 ## Actions indispensables pour lever les FAIL Supabase
 
-1. Créer le premier compte `admin_systeme` de manière sécurisée dans Supabase Auth, puis son profil actif.
-2. Tester chaque rôle avec un compte réel et refaire les tests visuels sur appareils/émulateurs.
+1. Accepter l’invitation envoyée à `danielngwej75@gmail.com` et définir le mot de passe personnel.
+2. Tester les autres rôles avec des comptes réels et refaire les tests visuels sur appareils/émulateurs.
 
 ## État final
 
-Le site public, les données dynamiques, le stockage média, les fonctions Edge et l’infrastructure Push sont en production. La création du premier administrateur système et les tests par rôle avec de vrais comptes restent nécessaires avant une certification humaine complète du back-office.
+Le site public, les données dynamiques, le stockage média, les fonctions Edge et l’infrastructure Push sont en production. Le premier compte `admin_systeme` a été créé pour Kikunda Ngwej Daniel et une invitation sécurisée a été envoyée à `danielngwej75@gmail.com`. L’acceptation de cette invitation et les tests des autres rôles restent nécessaires avant une certification humaine complète du back-office.
