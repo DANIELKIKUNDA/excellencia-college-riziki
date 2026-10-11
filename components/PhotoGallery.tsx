@@ -7,6 +7,7 @@ export type PhotoItem = { src: string; alt: string; title: string; tag?: string 
 
 export default function PhotoGallery({ photos }: { photos: PhotoItem[] }) {
   const [active, setActive] = useState<PhotoItem | null>(null);
+  const [visibleCount,setVisibleCount]=useState(8);
 
   useEffect(() => {
     if (!active) return;
@@ -20,7 +21,7 @@ export default function PhotoGallery({ photos }: { photos: PhotoItem[] }) {
   return (
     <>
       <div className="photoMosaic">
-        {photos.map((photo, index) => (
+        {photos.slice(0,visibleCount).map((photo, index) => (
           <button
             type="button"
             className={`photoTile ${index === 0 || index === 5 ? 'photoTileWide' : ''}`}
@@ -28,7 +29,7 @@ export default function PhotoGallery({ photos }: { photos: PhotoItem[] }) {
             onClick={() => setActive(photo)}
             aria-label={`Agrandir : ${photo.title}`}
           >
-            <Image src={photo.src} alt={photo.alt} fill className="cover" sizes="(max-width: 700px) 100vw, 50vw" />
+            <Image src={photo.src} alt={photo.alt} fill className="cover" sizes="(max-width: 700px) 92vw, (max-width: 1100px) 46vw, 28vw" loading={index<2?'eager':'lazy'} decoding="async" />
             <span className="photoOverlay">
               {photo.tag && <small>{photo.tag}</small>}
               <strong>{photo.title}</strong>
@@ -36,6 +37,7 @@ export default function PhotoGallery({ photos }: { photos: PhotoItem[] }) {
           </button>
         ))}
       </div>
+      {visibleCount<photos.length&&<div className="galleryMore"><button className="btn primary" type="button" onClick={()=>setVisibleCount(count=>Math.min(count+8,photos.length))}>Afficher plus de photos <span>{visibleCount}/{photos.length}</span></button></div>}
 
       {active && (
         <div className="lightbox" role="dialog" aria-modal="true" aria-label={active.title} onClick={() => setActive(null)}>
