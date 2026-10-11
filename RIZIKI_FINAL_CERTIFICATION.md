@@ -1,6 +1,6 @@
 # RIZIKI — rapport de certification fonctionnelle
 
-Date du contrôle : 10 octobre 2026 (Africa/Kinshasa)  
+Date du dernier contrôle : 11 octobre 2026 (Africa/Kinshasa)  
 Domaine : https://excellenciariziki.com  
 Référentiel contrôlé : branche `main`
 
@@ -21,10 +21,10 @@ Le site public, son domaine, son export statique et sa PWA restent opérationnel
 | Messages parents | PASS | Lecture par RLS, statuts nouveau/en traitement/clôturé et affichage élève/classe. |
 | Actualités | PASS | Création, modification, publication/dépublication et suppression dans l’interface. |
 | Communiqués | PASS | Création, modification, publication/dépublication et suppression dans l’interface. |
-| Photos et vidéos | FAIL | Table `media_items` disponible ; le bucket `school-media` renvoie encore `NoSuchBucket`. |
-| Notifications push | FAIL | Code présent ; fonctions Edge/VAPID non certifiés comme déployés en production. |
+| Photos et vidéos | PASS | Table `media_items` disponible ; bucket public `school-media` confirmé dans Supabase, limite 10 MB et formats image/vidéo configurés. |
+| Notifications push | PASS | Fonctions déployées, secrets VAPID configurés et bouton « Activer les notifications » confirmé sur le domaine public. |
 | Rôles détaillés et RLS | PASS | Migration appliquée ; tables publiques et politiques créées. Les tests par compte réel restent à effectuer après création des comptes. |
-| Gestion des comptes | FAIL | Interface et fonction Edge mises à jour ; fonction `manage-users` non certifiée déployée. |
+| Gestion des comptes | PASS | Interface et fonction `manage-users` déployées ; accès non authentifié correctement refusé avec HTTP 401. |
 | Coordonnées dynamiques | PASS | Table `site_settings` HTTP 200 et données initiales confirmées. |
 | Responsables dynamiques | PASS | Table `school_services` HTTP 200 ; sept responsables et numéros confirmés. |
 | Réseaux sociaux dynamiques | PASS | Table `social_links` HTTP 200 ; liens administrables sans recompilation. |
@@ -64,17 +64,17 @@ Le site public, son domaine, son export statique et sa PWA restent opérationnel
   - `social_links` : HTTP 200;
   - `media_items` : HTTP 200;
   - `contact_messages` : HTTP 200;
-  - bucket `school-media` : FAIL, `NoSuchBucket`;
-  - fonctions Edge `manage-users`, `subscribe-push`, `send-push` : HTTP 404.
+  - bucket public `school-media` : PASS, confirmé dans Supabase Storage avec limite 10 MB et types MIME attendus;
+  - fonctions Edge `manage-users`, `subscribe-push`, `send-push` : déployées et OPTIONS HTTP 200;
+  - `manage-users` et `send-push` sans utilisateur authentifié : HTTP 401 attendu;
+  - `subscribe-push` avec abonnement vide : HTTP 400 attendu;
+  - bouton public « Activer les notifications » : présent après reconstruction GitHub Pages.
 
 ## Actions indispensables pour lever les FAIL Supabase
 
-1. Créer ou recréer le bucket public `school-media`.
-2. Déployer `manage-users`, `subscribe-push` et `send-push`.
-3. Configurer les secrets VAPID et la clé service-role uniquement dans les secrets des Edge Functions.
-4. Créer le premier compte `admin_systeme` de manière sécurisée dans Supabase Auth, puis son profil actif.
-5. Tester chaque rôle avec un compte réel et refaire les tests visuels sur appareils/émulateurs.
+1. Créer le premier compte `admin_systeme` de manière sécurisée dans Supabase Auth, puis son profil actif.
+2. Tester chaque rôle avec un compte réel et refaire les tests visuels sur appareils/émulateurs.
 
 ## État final
 
-Le site public est publiable sans régression grâce aux données de repli. Le back-office avancé ne doit pas être déclaré exploitable en production avant l’application de la migration et le déploiement des Edge Functions. Ce rapport utilise volontairement **FAIL** pour les éléments non prouvés, même lorsque leur code est livré.
+Le site public, les données dynamiques, le stockage média, les fonctions Edge et l’infrastructure Push sont en production. La création du premier administrateur système et les tests par rôle avec de vrais comptes restent nécessaires avant une certification humaine complète du back-office.
