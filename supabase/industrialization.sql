@@ -38,3 +38,9 @@ create index if not exists notification_jobs_due_idx on public.notification_jobs
 -- Les abonnements existants « public » signifient « toutes les informations ».
 update public.push_subscriptions set audience='public' where audience is null or audience='';
 
+-- Autoriser des vidéos Web raisonnablement compressées (50 Mo maximum).
+update storage.buckets
+set file_size_limit=52428800,
+    allowed_mime_types=array['image/jpeg','image/png','image/webp','video/mp4']
+where id='school-media';
+
